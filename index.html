@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta property="og:title" content="favicon.ico" />
+<meta property="og:description" content="Consulta de estoque inteligente" />
+<meta property="og:image" content="https://seusite.vercel.app/favicon.ico" />
+<title>Stock Search — Consulta de Estoque</title>
+<link rel="icon" href="/favicon.ico" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:        #0d0f12;
+    --surface:   #13161b;
+    --surface2:  #1a1e26;
+    --border:    rgba(255,255,255,0.07);
+    --border2:   rgba(255,255,255,0.13);
+    --accent:    #00e5a0;
+    --accent2:   #0094ff;
+    --text:      #f0f2f5;
+    --muted:     #7a8393;
+    --muted2:    #4a5261;
+    --ok-bg:     rgba(0,229,160,0.10);
+    --ok-text:   #00e5a0;
+    --low-bg:    rgba(255,160,0,0.10);
+    --low-text:  #ffaa00;
+    --out-bg:    rgba(255,70,70,0.10);
+    --out-text:  #ff6060;
+    --tag-bg:    rgba(0,148,255,0.10);
+    --tag-text:  #5bb8ff;
+    --radius:    10px;
+    --radius-lg: 16px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── HEADER ─────────────────────────────────────── */
+  .app-header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,15,18,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+  .header-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: flex; align-items: center; gap: 20px;
+    height: 64px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    text-decoration: none; flex-shrink: 0;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: 17px;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+  .logo-text span { color: var(--accent); }
+  .header-divider { width: 1px; height: 24px; background: var(--border2); flex-shrink: 0; }
+  .header-search {
+    flex: 1;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 0 14px; height: 40px;
+    transition: border-color .2s;
+  }
+  .header-search:focus-within { border-color: var(--accent); }
+  .header-search svg { color: var(--muted); flex-shrink: 0; }
+  .header-search input {
+    flex: 1; background: none; border: none; outline: none;
+    color: var(--text); font-family: 'Inter', sans-serif;
+    font-size: 14px; font-weight: 400;
+  }
+  .header-search input::placeholder { color: var(--muted2); }
+  .header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .pill-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    background: var(--surface2); color: var(--muted);
+    border: 1px solid var(--border2);
+    border-radius: 999px; padding: 3px 10px;
+    white-space: nowrap;
+  }
+  .btn-upload {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--accent); color: #000;
+    border: none; border-radius: var(--radius);
+    padding: 0 14px; height: 36px;
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: opacity .15s;
+    white-space: nowrap;
+  }
+  .btn-upload:hover { opacity: .85; }
+
+  /* ── LAYOUT ──────────────────────────────────────── */
+  .app-body {
+    max-width: 1100px; margin: 0 auto;
+    padding: 28px 24px 60px;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* ── SIDEBAR ─────────────────────────────────────── */
+  .sidebar { position: sticky; top: 88px; }
+  .sidebar-section { margin-bottom: 24px; }
+  .sidebar-label {
+    font-size: 10px; font-weight: 500; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 8px; padding: 0 4px;
+  }
+  .brand-btn {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; text-align: left;
+    background: none; border: none; cursor: pointer;
+    padding: 9px 12px; border-radius: var(--radius);
+    color: var(--muted); font-family: 'Inter', sans-serif;
+    font-size: 13px; font-weight: 400;
+    transition: background .15s, color .15s;
+    margin-bottom: 2px;
+  }
+  .brand-btn:hover { background: var(--surface2); color: var(--text); }
+  .brand-btn.active {
+    background: rgba(0,229,160,0.08);
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .brand-btn .brand-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px; color: var(--muted2);
+    background: var(--surface2);
+    border-radius: 999px; padding: 1px 7px;
+  }
+  .brand-btn.active .brand-count { color: var(--accent); background: rgba(0,229,160,0.12); }
+
+  .type-chips { display: flex; flex-direction: column; gap: 2px; }
+  .type-chip {
+    display: flex; align-items: center; justify-content: space-between;
+    background: none; border: none; cursor: pointer;
+    padding: 7px 12px; border-radius: var(--radius);
+    color: var(--muted); font-family: 'Inter', sans-serif;
+    font-size: 12px; transition: background .15s, color .15s;
+  }
+  .type-chip:hover { background: var(--surface2); color: var(--text); }
+  .type-chip.active { background: var(--surface2); color: var(--text); font-weight: 500; }
+  .type-chip .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--muted2); flex-shrink: 0;
+    transition: background .15s;
+  }
+  .type-chip.active .dot { background: var(--accent2); }
+
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+  .stat-card .val {
+    font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800;
+    line-height: 1; margin-bottom: 4px;
+  }
+  .stat-card .lbl { font-size: 10px; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
+  .stat-card.ok .val { color: var(--ok-text); }
+  .stat-card.low .val { color: var(--low-text); }
+
+  /* ── MAIN CONTENT ────────────────────────────────── */
+  .main-area {}
+  .results-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .results-count {
+    font-size: 13px; color: var(--muted);
+  }
+  .results-count strong { color: var(--text); font-weight: 500; }
+  .sort-select {
+    background: var(--surface); border: 1px solid var(--border2);
+    color: var(--muted); font-family: 'Inter', sans-serif;
+    font-size: 12px; border-radius: var(--radius);
+    padding: 5px 10px; cursor: pointer; outline: none;
+  }
+
+  /* Search hint */
+  .search-hint {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px 14px;
+    margin-bottom: 16px; font-size: 12px; color: var(--muted);
+  }
+  .hint-terms { display: flex; gap: 6px; flex-wrap: wrap; }
+  .hint-term {
+    background: rgba(0,148,255,0.12); color: var(--accent2);
+    border-radius: 5px; padding: 1px 7px;
+    font-family: 'DM Mono', monospace; font-size: 11px;
+  }
+
+  /* ── PRODUCT CARDS ───────────────────────────────── */
+  .product-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .product-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .product-card:hover { border-color: var(--border2); background: var(--surface2); }
+  .product-card.expanded { border-color: rgba(0,229,160,0.3); }
+
+  .card-main {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px;
+    padding: 14px 16px;
+    align-items: center;
+  }
+
+  .card-code {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px; font-weight: 500;
+    color: var(--accent);
+    background: rgba(0,229,160,0.08);
+    border: 1px solid rgba(0,229,160,0.15);
+    border-radius: 7px;
+    padding: 5px 10px;
+    white-space: nowrap;
+  }
+
+  .card-body { min-width: 0; }
+  .card-type {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px; font-weight: 600;
+    color: var(--text); margin-bottom: 4px;
+  }
+  .card-dim { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ctag {
+    font-size: 11px; padding: 2px 8px; border-radius: 5px;
+    font-family: 'DM Mono', monospace;
+    background: var(--surface2); color: var(--muted);
+    border: 1px solid var(--border);
+    white-space: nowrap; max-width: 180px;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .ctag.primary {
+    background: rgba(0,229,160,0.08);
+    color: var(--ok-text);
+    border-color: rgba(0,229,160,0.2);
+  }
+  .ctag.secondary {
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    border-color: rgba(0,148,255,0.15);
+  }
+
+  .card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .qty-badge {
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+    padding: 4px 12px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .qty-ok   { background: var(--ok-bg);  color: var(--ok-text);  }
+  .qty-low  { background: var(--low-bg); color: var(--low-text); }
+  .qty-out  { background: var(--out-bg); color: var(--out-text); }
+  .expand-hint { font-size: 11px; color: var(--muted2); }
+
+  /* Expanded specs */
+  .card-specs {
+    border-top: 1px solid var(--border);
+    padding: 14px 16px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  }
+  .spec-item { }
+  .spec-lbl { font-size: 10px; color: var(--muted); letter-spacing: .8px; text-transform: uppercase; margin-bottom: 3px; }
+  .spec-val { font-size: 13px; color: var(--text); font-weight: 400; word-break: break-word; line-height: 1.4; }
+  .spec-val.mono { font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  /* Highlight */
+  mark {
+    background: rgba(255,200,0,0.25);
+    color: #ffe066;
+    border-radius: 3px;
+    padding: 0 2px;
+  }
+
+  /* Empty state */
+  .empty {
+    text-align: center; padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 16px; }
+  .empty h3 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .empty p { font-size: 14px; line-height: 1.6; }
+
+  /* Loading / connection state */
+  .conn-banner {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(0,148,255,0.08); border: 1px solid rgba(0,148,255,0.2);
+    border-radius: var(--radius); padding: 10px 14px;
+    margin-bottom: 16px; font-size: 13px; color: var(--accent2);
+  }
+  .conn-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); flex-shrink: 0;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* Upload modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.7); backdrop-filter: blur(8px);
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 20px; padding: 28px; width: 460px; max-width: 95vw;
+  }
+  .modal h2 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+  .modal p { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+  .drop-zone {
+    border: 2px dashed var(--border2); border-radius: var(--radius-lg);
+    padding: 32px; text-align: center; cursor: pointer;
+    transition: border-color .2s, background .2s;
+    margin-bottom: 16px;
+  }
+  .drop-zone:hover, .drop-zone.drag { border-color: var(--accent); background: rgba(0,229,160,0.04); }
+  .drop-zone .dz-icon { font-size: 32px; margin-bottom: 10px; }
+  .drop-zone p { color: var(--muted); font-size: 13px; margin: 0; }
+  .drop-zone p strong { color: var(--accent); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .btn-cancel {
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--muted); border-radius: var(--radius);
+    padding: 8px 16px; font-family: 'Inter', sans-serif;
+    font-size: 13px; cursor: pointer;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .app-body { grid-template-columns: 1fr; padding: 16px; }
+    .sidebar { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .type-chips { flex-direction: row; flex-wrap: wrap; }
+    .type-chip { flex-direction: row; }
+    .card-specs { grid-template-columns: repeat(2,1fr); }
+    .header-inner { gap: 12px; }
+    .pill-badge { display: none; }
+  }
+  @media (max-width: 500px) {
+    .card-main { grid-template-columns: 1fr auto; }
+    .card-code { display: none; }
+    .card-specs { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <div class="logo-icon">⚡</div>
+      <span class="logo-text">Stock<span>Search</span></span>
+    </a>
+    <div class="header-divider"></div>
+    <div class="header-search">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="search-input" type="text"
+        placeholder="Busque por código, M12, PNP, IP67, faceado..." />
+    </div>
+    <div class="header-right">
+      <span class="pill-badge" id="total-badge">— produtos</span>
+      <button class="btn-upload" onclick="openModal()">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Atualizar
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- BODY -->
+<div class="app-body">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Marca</div>
+      <div id="brand-list"></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Tipo</div>
+      <div class="type-chips" id="type-list"></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Visão geral</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="val" id="stat-total">—</div>
+          <div class="lbl">Total</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="val" id="stat-ok">—</div>
+          <div class="lbl">Em estoque</div>
+        </div>
+        <div class="stat-card low">
+          <div class="val" id="stat-low">—</div>
+          <div class="lbl">Estoque baixo</div>
+        </div>
+        <div class="stat-card">
+          <div class="val" id="stat-out" style="color:var(--out-text)">—</div>
+          <div class="lbl">Sem estoque</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-area">
+    <div class="conn-banner" id="conn-banner">
+      <div class="conn-dot"></div>
+      <span>Dados locais carregados — conecte ao Supabase para sincronização em tempo real</span>
+    </div>
+    <div id="hint-bar"></div>
+    <div class="results-bar">
+      <span class="results-count" id="results-count"></span>
+      <select class="sort-select" id="sort-select" onchange="render()">
+        <option value="score">Mais relevante</option>
+        <option value="qty-desc">Maior estoque</option>
+        <option value="qty-asc">Menor estoque</option>
+        <option value="code">Código A→Z</option>
+      </select>
+    </div>
+    <div class="product-list" id="product-list"></div>
+  </main>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>Atualizar estoque</h2>
+    <p>Faça o upload de uma planilha Excel (.xlsx) exportada do seu ERP. Os dados serão carregados imediatamente para todos os vendedores.</p>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="dz-icon">📂</div>
+      <p>Arraste o arquivo aqui ou <strong>clique para selecionar</strong></p>
+      <p style="margin-top:6px;font-size:11px;color:var(--muted2)">Suporte: .xlsx, .xls, .csv</p>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(event)" />
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- XLSX parser -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   CONFIGURAÇÃO — ajuste conforme necessário
+   ═══════════════════════════════════════════════════ */
+const SUPABASE_URL   = 'https://fptvshjumhdcnvzgpbmz.supabase.co';   // ex: https://xxxx.supabase.co
+const SUPABASE_KEY   = 'sb_publishable__I6_49B5uVcIRXddxPfhpg_YS-lRlvH';   // sua anon public key
+const SUPABASE_TABLE = 'estoque';
+
+/* Pesos de busca por campo (campo de maior peso vence) */
+const FIELD_WEIGHTS = {
+  CODIGO: 9, FORMATO: 10, TIPO: 8, ALCANCE: 7,
+  SAIDA: 6, IP: 5, TENSAO: 4, CONEXAO: 3,
+  MATERIAL: 2, INSTALACAO: 2, FREQUENCIA: 1,
+  TEMPERATURA: 1, DIMENSOES: 1,
+};
+const PRIMARY_FIELDS    = new Set(['FORMATO','ALCANCE','SAIDA','IP','TIPO']);
+const SECONDARY_FIELDS  = new Set(['CONEXAO','TENSAO','MATERIAL']);
+const SPEC_DISPLAY_KEYS = ['TIPO','FORMATO','DIMENSOES','INSTALACAO','ALCANCE','SAIDA',
+  'FREQUENCIA','MATERIAL','SUPERFICIE_ATIVA','CONEXAO','TENSAO','TEMPERATURA','IP','CERTIFICACAO'];
+const SPEC_LABELS = {
+  TIPO:'Tipo', FORMATO:'Formato', DIMENSOES:'Dimensões',
+  INSTALACAO:'Instalação', ALCANCE:'Alcance', SAIDA:'Saída',
+  FREQUENCIA:'Frequência', MATERIAL:'Material',
+  SUPERFICIE_ATIVA:'Superfície ativa', CONEXAO:'Conexão',
+  TENSAO:'Tensão', TEMPERATURA:'Temperatura',
+  IP:'Proteção IP', CERTIFICACAO:'Certificações',
+};
+
+/* ═══════════════════════════════════════════════════
+   ESTADO
+   ═══════════════════════════════════════════════════ */
+let allProducts   = [];
+let activeBrand   = 'Todos';
+let activeType    = 'Todos';
+let expandedCode  = null;
+
+/* Dados Balluff embutidos (substituídos ao carregar planilha ou Supabase) */
+const BALLUFF_DATA = [{"CODIGO":"BES0068","QUANTIDADE":320,"TIPO":"Indutivo","DIMENSOES":"Ø 12 x 65 mm","FORMATO":"M12x1","INSTALACAO":"faceado","ALCANCE":"4 mm","SAIDA":"PNP Contato normalmente aberto (NA)","FREQUENCIA":"2500 Hz","MATERIAL":"Latão, revestido sem níquel","SUPERFICIE_ATIVA":"PBT","CONEXAO":"M12x1","TENSAO":"10...30 VDC","TEMPERATURA":"-25...70 °C","IP":"IP68","CERTIFICACAO":"CE / UKCA / cULus / WEEE","MARCA":"Balluff"},{"CODIGO":"BES060U","QUANTIDADE":194,"TIPO":"Indutivo","DIMENSOES":"Ø 12 x 65 mm","FORMATO":"M12x1","INSTALACAO":"faceado","ALCANCE":"4 mm","SAIDA":"PNP Contato normalmente aberto (NA)","FREQUENCIA":"350 Hz","MATERIAL":"Fundição de zinco sob pressão, niquelado PC","SUPERFICIE_ATIVA":"PBT","CONEXAO":"M12x1","TENSAO":"10...30 VDC","TEMPERATURA":"-25...70 °C","IP":"IP67","CERTIFICACAO":"CE","MARCA":"Balluff"},{"CODIGO":"BES0086","QUANTIDADE":134,"TIPO":"Indutivo","DIMENSOES":"Ø 18 x 66 mm","FORMATO":"M18x1","INSTALACAO":"faceado","ALCANCE":"5 mm","SAIDA":"PNP Contato normalmente aberto (NA)","FREQUENCIA":"2000 Hz","MATERIAL":"Latão, revestido sem níquel","SUPERFICIE_ATIVA":"PBT","CONEXAO":"M18x1","TENSAO":"10...30 VDC","TEMPERATURA":"-40...85 °C","IP":"IP68","CERTIFICACAO":"CE UKCA cULus WEEE","MARCA":"Balluff"},{"CODIGO":"BMF00C4","QUANTIDADE":139,"TIPO":"Magnético","DIMENSOES":"23.5 x 5 x 5.5 mm","ALCANCE":"Cilindro pneumático com ranhura em T.","SAIDA":"PNP Contato normalmente aberto (NA)","FREQUENCIA":"3000 Hz","MATERIAL":"PA 12","CONEXAO":"M8x1-Macho, 3-polos","TENSAO":"10...30 VDC","TEMPERATURA":"-25...85 °C","IP":"IP67","CERTIFICACAO":"cULus CE UKCA WEEE","MARCA":"Balluff"},{"CODIGO":"BMF008P","QUANTIDADE":101,"TIPO":"Magnético","DIMENSOES":"29 x 6.2 x 4.4 mm","FREQUENCIA":"1000 Hz","MATERIAL":"LCP","TENSAO":"4...30 VDC","TEMPERATURA":"-20...70 °C","IP":"IP65","MARCA":"Balluff"},{"CODIGO":"BCC032H","QUANTIDADE":211,"TIPO":"Cabo","SAIDA":"Conexão M12x1-Fêmea, reto, 5-polos","MATERIAL":"Cabo PUR preto, 5 m","CONEXAO":"M12x1","TENSAO":"250 VDC / 250 VAC","TEMPERATURA":"-50...90 °C","IP":"IP67","CERTIFICACAO":"CE, WEEE, cULus","MARCA":"Balluff"},{"CODIGO":"BCC036P","QUANTIDADE":78,"TIPO":"Cabo","MATERIAL":"PVC","CONEXAO":"M12x1","TEMPERATURA":"-40...105 °C","IP":"IP67","CERTIFICACAO":"CE, cULus, WEEE","MARCA":"Balluff"},{"CODIGO":"BOS01CF","QUANTIDADE":78,"TIPO":"Óptico","DIMENSOES":"Ø 18 x 75 mm","SAIDA":"PNP Contato normalmente aberto (NA) / normalmente fechado (NF)","CONEXAO":"M12x1","TENSAO":"10...30 VDC","MARCA":"Balluff"},{"CODIGO":"BOS01J8","QUANTIDADE":56,"TIPO":"Óptico","DIMENSOES":"Ø 18 x 75 mm","SAIDA":"PNP Contato normalmente aberto/normalmente fechado (NA/NF)","CONEXAO":"M12x1","TENSAO":"10...30 VDC","MARCA":"Balluff"},{"CODIGO":"BES0161","QUANTIDADE":67,"TIPO":"Indutivo","DIMENSOES":"Ø 12 x 70 mm","FORMATO":"M12x1","INSTALACAO":"faceado","ALCANCE":"2 mm","SAIDA":"PNP NA/NF","FREQUENCIA":"3500 Hz","MATERIAL":"Aço inoxidável","CONEXAO":"M12x1","TENSAO":"10...30 VDC","TEMPERATURA":"-40...85 °C","IP":"IP68","CERTIFICACAO":"CE UKCA cULus WEEE","MARCA":"Balluff"},{"CODIGO":"BES0178","QUANTIDADE":65,"TIPO":"Indutivo","DIMENSOES":"Ø 12 x 70 mm","FORMATO":"M12x1","INSTALACAO":"não faceado","ALCANCE":"4 mm","SAIDA":"PNP NA/NF","FREQUENCIA":"2500 Hz","MATERIAL":"Aço inoxidável","CONEXAO":"M12x1","TENSAO":"10...30 VDC","TEMPERATURA":"-40...85 °C","IP":"IP68","MARCA":"Balluff"},{"CODIGO":"BES060R","QUANTIDADE":51,"TIPO":"Indutivo","DIMENSOES":"Ø 12 x 45 mm","FORMATO":"M12x1","INSTALACAO":"faceado","ALCANCE":"4 mm","SAIDA":"PNP NA","FREQUENCIA":"350 Hz","MATERIAL":"Fundição de zinco, niquelado","CONEXAO":"M12x1","TENSAO":"10...30 VDC","TEMPERATURA":"-25...70 °C","IP":"IP67","MARCA":"Balluff"},{"CODIGO":"BIS0046","QUANTIDADE":52,"TIPO":"RFID","DIMENSOES":"Ø 50 x 3.3 mm","FREQUENCIA":"13,56 MHz","TEMPERATURA":"-25...85 °C","IP":"IP68","MARCA":"Balluff"},{"CODIGO":"BES01H6","QUANTIDADE":58,"TIPO":"Indutivo","DIMENSOES":"Ø 12 x 70 mm","FORMATO":"M12x1","INSTALACAO":"não faceado","ALCANCE":"4 mm","SAIDA":"PNP NA","FREQUENCIA":"2500 Hz","MATERIAL":"Aço inoxidável","CONEXAO":"M12x1","TENSAO":"10...30 VDC","TEMPERATURA":"-40...85 °C","IP":"IP68","MARCA":"Balluff"},{"CODIGO":"BCC036L","QUANTIDADE":55,"TIPO":"Cabo","FORMATO":"M12x1","INSTALACAO":"angular, 5-polos","MATERIAL":"PVC","CONEXAO":"M12x1","TEMPERATURA":"-40...105 °C","IP":"IP67","MARCA":"Balluff"},{"CODIGO":"BMF00PM","QUANTIDADE":65,"TIPO":"Magnético","DIMENSOES":"23.5 x 5 x 5.5 mm","ALCANCE":"Cilindro pneumático ranhura em T","SAIDA":"PNP NA","FREQUENCIA":"3000 Hz","MATERIAL":"PA 12","CONEXAO":"M8x1-Macho","TENSAO":"10...30 VDC","TEMPERATURA":"-25...85 °C","IP":"IP67","MARCA":"Balluff"},{"CODIGO":"BES0060","QUANTIDADE":73,"TIPO":"Indutivo","DIMENSOES":"Ø 12 x 65 mm","FORMATO":"M12x1","INSTALACAO":"faceado","ALCANCE":"2 mm","SAIDA":"PNP NA","FREQUENCIA":"3500 Hz","MATERIAL":"Latão, revestido","CONEXAO":"M12x1","TENSAO":"10...30 VDC","TEMPERATURA":"-25...70 °C","IP":"IP68","MARCA":"Balluff"},{"CODIGO":"BOS01Y2","QUANTIDADE":71,"TIPO":"Óptico","DIMENSOES":"Ø 12 x 60 mm","CONEXAO":"M12x1","TENSAO":"10...30 VDC","MARCA":"Balluff"},{"CODIGO":"BAM00WL","QUANTIDADE":70,"TIPO":"Mecânico (acessório)","DIMENSOES":"51 x 61 x 8 mm","SUPERFICIE_ATIVA":"22,6 cm²","CONEXAO":"2 furos de fixação","TEMPERATURA":"-20...60 °C","MARCA":"Balluff"},{"CODIGO":"BES00EF","QUANTIDADE":27,"TIPO":"Indutivo","DIMENSOES":"Ø 12 x 45 mm","FORMATO":"M12x1","INSTALACAO":"faceado","ALCANCE":"4 mm","SAIDA":"PNP NA","FREQUENCIA":"2500 Hz","MATERIAL":"Latão, revestido","CONEXAO":"M12x1","TENSAO":"10...30 VDC","TEMPERATURA":"-25...70 °C","IP":"IP68","MARCA":"Balluff"}];
+
+/* ═══════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════ */
+async function init() {
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    await loadFromSupabase();
+  } else {
+    allProducts = BALLUFF_DATA;
+    document.getElementById('conn-banner').innerHTML =
+      '<div class="conn-dot" style="background:var(--low-text)"></div>' +
+      '<span>Modo demonstração — <strong style="color:var(--accent)">configure o Supabase</strong> para sincronização com seu ERP</span>';
+  }
+  render();
+}
+
+/* ═══════════════════════════════════════════════════
+   SUPABASE
+   ═══════════════════════════════════════════════════ */
+async function loadFromSupabase() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?select=*&limit=5000`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    if (!res.ok) throw new Error('Supabase error');
+    allProducts = await res.json();
+    document.getElementById('conn-banner').innerHTML =
+      '<div class="conn-dot"></div><span>Conectado ao Supabase — dados sincronizados em tempo real</span>';
+  } catch (e) {
+    allProducts = BALLUFF_DATA;
+    document.getElementById('conn-banner').innerHTML =
+      '<div class="conn-dot" style="background:var(--out-text)"></div>' +
+      '<span>Sem conexão com Supabase — exibindo dados locais</span>';
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   UPLOAD LOCAL
+   ═══════════════════════════════════════════════════ */
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const wb = XLSX.read(ev.target.result, { type: 'binary' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { defval: null });
+    allProducts = raw
+      .map(r => {
+        const p = {};
+        Object.entries(r).forEach(([k, v]) => {
+          if (v !== null && v !== undefined && String(v).trim() !== '') {
+            p[k.trim().toUpperCase().replace(/\s+/g,'_')] = String(v).trim();
+          }
+        });
+        if (!p.MARCA) p.MARCA = 'Importado';
+        if (p.QUANTIDADE) p.QUANTIDADE = Number(p.QUANTIDADE) || 0;
+        return p;
+      })
+      .filter(p => p.CODIGO);
+    closeModal();
+    activeBrand = 'Todos'; activeType = 'Todos';
+    render();
+  };
+  reader.readAsBinaryString(file);
+}
+
+/* ═══════════════════════════════════════════════════
+   BUSCA COM RANKING
+   ═══════════════════════════════════════════════════ */
+function scoreProduct(p, terms) {
+  if (!terms.length) return { score: 1, matched: [] };
+  const allOk = terms.every(t =>
+    Object.values(p).some(v => v != null && String(v).toLowerCase().includes(t))
+  );
+  if (!allOk) return { score: 0, matched: [] };
+
+  let total = 0;
+  const matched = [];
+  terms.forEach(t => {
+    let best = 0, bestField = null;
+    Object.entries(FIELD_WEIGHTS).forEach(([f, w]) => {
+      const v = p[f];
+      if (v != null && String(v).toLowerCase().includes(t) && w > best) {
+        best = w; bestField = f;
+      }
+    });
+    if (!bestField) {
+      Object.keys(p).forEach(f => {
+        if (FIELD_WEIGHTS[f]) return;
+        if (p[f] != null && String(p[f]).toLowerCase().includes(t) && 1 > best) {
+          best = 1; bestField = f;
+        }
+      });
+    }
+    if (best > 0) { total += best; if (bestField) matched.push({ field: bestField, term: t }); }
+  });
+  return { score: total, matched };
+}
+
+/* ═══════════════════════════════════════════════════
+   HIGHLIGHT
+   ═══════════════════════════════════════════════════ */
+function hl(text, terms) {
+  if (!terms.length || !text) return String(text || '');
+  let s = String(text);
+  terms.forEach(t => {
+    const re = new RegExp('(' + t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+    s = s.replace(re, '<mark>$1</mark>');
+  });
+  return s;
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER
+   ═══════════════════════════════════════════════════ */
+function render() {
+  const raw   = document.getElementById('search-input').value.trim();
+  const terms = raw ? raw.toLowerCase().split(/\s+/).filter(Boolean) : [];
+  const sort  = document.getElementById('sort-select').value;
+
+  /* brands */
+  const brands = ['Todos', ...new Set(allProducts.map(p => p.MARCA).filter(Boolean))];
+  document.getElementById('brand-list').innerHTML = brands.map(b => {
+    const cnt = b === 'Todos' ? allProducts.length : allProducts.filter(p => p.MARCA === b).length;
+    return `<button class="brand-btn ${b===activeBrand?'active':''}" onclick="setBrand('${b.replace(/'/g,"\\'")}')">
+      ${b} <span class="brand-count">${cnt}</span>
+    </button>`;
+  }).join('');
+
+  /* brand filter */
+  let pool = activeBrand === 'Todos' ? allProducts : allProducts.filter(p => p.MARCA === activeBrand);
+
+  /* types */
+  const types = ['Todos', ...new Set(pool.map(p => p.TIPO).filter(Boolean))];
+  document.getElementById('type-list').innerHTML = types.map(t =>
+    `<button class="type-chip ${t===activeType?'active':''}" onclick="setType('${t.replace(/'/g,"\\'")}')">
+      <span class="dot"></span>${t}
+    </button>`
+  ).join('');
+
+  if (activeType !== 'Todos') pool = pool.filter(p => p.TIPO === activeType);
+
+  /* search + score */
+  let results = pool.map(p => ({ p, ...scoreProduct(p, terms) })).filter(r => r.score > 0);
+
+  /* sort */
+  if (sort === 'score')    results.sort((a,b) => b.score - a.score || b.p.QUANTIDADE - a.p.QUANTIDADE);
+  if (sort === 'qty-desc') results.sort((a,b) => b.p.QUANTIDADE - a.p.QUANTIDADE);
+  if (sort === 'qty-asc')  results.sort((a,b) => a.p.QUANTIDADE - b.p.QUANTIDADE);
+  if (sort === 'code')     results.sort((a,b) => String(a.p.CODIGO).localeCompare(String(b.p.CODIGO)));
+
+  /* stats (sobre pool inteiro) */
+  const inStock = pool.filter(p => p.QUANTIDADE > 0).length;
+  const lowStock = pool.filter(p => p.QUANTIDADE > 0 && p.QUANTIDADE <= 5).length;
+  const outStock = pool.filter(p => p.QUANTIDADE === 0).length;
+  document.getElementById('stat-total').textContent = pool.length;
+  document.getElementById('stat-ok').textContent = inStock;
+  document.getElementById('stat-low').textContent = lowStock;
+  document.getElementById('stat-out').textContent = outStock;
+  document.getElementById('total-badge').textContent = `${pool.length} produtos`;
+
+  /* hint */
+  const hintBar = document.getElementById('hint-bar');
+  if (terms.length > 1) {
+    hintBar.innerHTML = `<div class="search-hint">
+      <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <div class="hint-terms">${terms.map(t=>`<span class="hint-term">${t}</span>`).join('')}</div>
+      <span style="color:var(--muted2)">— todos os termos presentes</span>
+    </div>`;
+  } else {
+    hintBar.innerHTML = '';
+  }
+
+  /* results count */
+  document.getElementById('results-count').innerHTML = raw
+    ? `<strong>${results.length}</strong> resultado${results.length!==1?'s':''} para "${raw}"`
+    : `<strong>${results.length}</strong> produto${results.length!==1?'s':''}`;
+
+  /* cards */
+  if (!results.length) {
+    document.getElementById('product-list').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🔍</div>
+        <h3>Nenhum produto encontrado</h3>
+        <p>Tente outros termos de busca.<br>Ex: <strong>M12 4mm PNP</strong> ou <strong>BES faceado IP68</strong></p>
+      </div>`;
+    return;
+  }
+
+  const matchedFields = r => new Set((r.matched||[]).map(m => m.field));
+
+  document.getElementById('product-list').innerHTML = results.map(r => {
+    const { p, matched } = r;
+    const mf = matchedFields(r);
+    const isExp = expandedCode === p.CODIGO;
+    const qty = Number(p.QUANTIDADE) || 0;
+    const qClass = qty === 0 ? 'qty-out' : qty <= 5 ? 'qty-low' : 'qty-ok';
+    const qLabel = qty === 0 ? 'Sem estoque' : `${qty} un.`;
+
+    /* tags */
+    const tagFields = [...PRIMARY_FIELDS, ...SECONDARY_FIELDS];
+    const tags = tagFields
+      .filter(f => p[f] && mf.has(f))
+      .slice(0, 5)
+      .map(f => {
+        const cls = PRIMARY_FIELDS.has(f) ? 'primary' : 'secondary';
+        let val = String(p[f]); if (val.length > 28) val = val.slice(0,28)+'…';
+        const lbl = SPEC_LABELS[f] || f;
+        return `<span class="ctag ${cls}">${lbl}: ${hl(val, terms)}</span>`;
+      }).join('');
+
+    /* all tags when no search */
+    const defaultTags = !terms.length ? tagFields
+      .filter(f => p[f]).slice(0,4)
+      .map(f => {
+        let val = String(p[f]); if (val.length > 28) val = val.slice(0,28)+'…';
+        return `<span class="ctag">${SPEC_LABELS[f]||f}: ${val}</span>`;
+      }).join('') : '';
+
+    /* specs expanded */
+    const specs = SPEC_DISPLAY_KEYS
+      .filter(k => p[k])
+      .map(k => `<div class="spec-item">
+        <div class="spec-lbl">${SPEC_LABELS[k]||k}</div>
+        <div class="spec-val ${['CODIGO','IP','FORMATO'].includes(k)?'mono':''}">${hl(String(p[k]), terms)}</div>
+      </div>`).join('');
+
+    return `<div class="product-card ${isExp?'expanded':''}" onclick="toggleExpand('${String(p.CODIGO).replace(/'/g,"\\'")}')">
+      <div class="card-main">
+        <div class="card-code">${hl(String(p.CODIGO||''), terms)}</div>
+        <div class="card-body">
+          <div class="card-type">${hl(String(p.TIPO||'—'), terms)}</div>
+          ${p.DIMENSOES ? `<div class="card-dim">${hl(String(p.DIMENSOES), terms)}</div>` : ''}
+          <div class="card-tags">${tags||defaultTags}</div>
+        </div>
+        <div class="card-right">
+          <span class="qty-badge ${qClass}">${qLabel}</span>
+          <span class="expand-hint">${isExp?'▲ fechar':'▼ specs'}</span>
+        </div>
+      </div>
+      ${isExp ? `<div class="card-specs">${specs}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function toggleExpand(code) { expandedCode = expandedCode === code ? null : code; render(); }
+function setBrand(b) { activeBrand = b; activeType = 'Todos'; render(); }
+function setType(t)  { activeType  = t; render(); }
+function openModal() { document.getElementById('modal').classList.add('open'); }
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+
+document.getElementById('search-input').addEventListener('input', () => { expandedCode = null; render(); });
+
+/* drag & drop */
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) { document.getElementById('file-input').files = e.dataTransfer.files; handleFile({ target: { files: [f] } }); }
+});
+
+init();
+</script>
+</body>
+</html>
